@@ -1,0 +1,43 @@
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  GPTOauthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: GPTOauthFunction
+      CodeUri: app/
+      Handler: handler.lambda_handler
+      Runtime: python3.11
+      MemorySize: 1024
+      Timeout: 30
+      Tracing: Active
+      FunctionUrlConfig:
+        AuthType: NONE
+      Environment:
+        Variables:
+          GPTAPPCACHE_TABLE_NAME: !Ref GptAppCache
+          GPTAPPCACHE_TABLE_ARN: !GetAtt GptAppCache.Arn
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GptAppCache
+  GPTOauthFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${GPTOauthFunction}
+  GptAppCache:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: cache_key
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: cache_key
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      TimeToLiveSpecification:
+        AttributeName: expired_at
+        Enabled: true
